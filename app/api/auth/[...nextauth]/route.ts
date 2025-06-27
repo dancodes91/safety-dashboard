@@ -1,8 +1,12 @@
-import NextAuth, { NextAuthOptions } from 'next-auth';
+import NextAuth, { NextAuthOptions, User as NextAuthUser } from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
 import { compare } from 'bcryptjs';
 import dbConnect from '@/lib/mongoose';
 import UserModel from '@/models/User';
+
+// Demo user credentials from environment variables
+const DEMO_USER_EMAIL = process.env.DEMO_USER_EMAIL || 'admin@example.com';
+const DEMO_USER_PASSWORD = process.env.DEMO_USER_PASSWORD || 'password123';
 
 export const authOptions: NextAuthOptions = {
   providers: [
@@ -17,26 +21,52 @@ export const authOptions: NextAuthOptions = {
           return null;
         }
         
-        await dbConnect();
-        
-        const user = await UserModel.findOne({ email: credentials.email });
-        
-        if (!user) {
-          return null;
+        // Check if using demo credentials
+        if (
+          credentials.email === DEMO_USER_EMAIL && 
+          credentials.password === DEMO_USER_PASSWORD
+        ) {
+          // Return a demo admin user without accessing the database
+          const demoUser: NextAuthUser = {
+            id: 'demo-user-id',
+            email: DEMO_USER_EMAIL,
+            name: 'Demo Admin',
+            role: 'Admin',
+          };
+          return demoUser;
         }
         
-        const isPasswordValid = await compare(credentials.password, user.password);
-        
-        if (!isPasswordValid) {
+        // Regular database authentication
+        try {
+          await dbConnect();
+          
+          // We need to cast this to any because our User type doesn't have password
+          // but we know the database model does
+          const user = await UserModel.findOne({ email: credentials.email }) as any;
+          
+          if (!user || !user.password) {
+            return null;
+          }
+          
+          const isPasswordValid = await compare(credentials.password, user.password);
+          
+          if (!isPasswordValid) {
+            return null;
+          }
+          
+          // Convert to NextAuth User format
+          const authUser: NextAuthUser = {
+            id: user._id.toString(),
+            email: user.email,
+            name: user.name,
+            role: user.role,
+          };
+          
+          return authUser;
+        } catch (error) {
+          console.error('Authentication error:', error);
           return null;
         }
-        
-        return {
-          id: user._id.toString(),
-          email: user.email,
-          name: user.name,
-          role: user.role,
-        };
       }
     })
   ],
@@ -50,8 +80,8 @@ export const authOptions: NextAuthOptions = {
     },
     async session({ session, token }) {
       if (session.user) {
-        session.user.id = token.id as string;
-        session.user.role = token.role as string;
+        session.user.id = token.id;
+        session.user.role = token.role;
       }
       return session;
     }
