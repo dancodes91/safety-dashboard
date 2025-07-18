@@ -10,14 +10,24 @@ type DataSourceContextType = {
 const DataSourceContext = createContext<DataSourceContextType | undefined>(undefined);
 
 export function DataSourceProvider({ children }: { children: ReactNode }) {
-  // Initialize state from localStorage if available, otherwise default to true (mock data)
-  const [useMockData, setUseMockData] = useState<boolean>(true);
+  // Initialize state from environment variable, then localStorage, otherwise default to true (mock data)
+  const [useMockData, setUseMockData] = useState<boolean>(() => {
+    // Check environment variable first
+    if (typeof window === 'undefined') {
+      return process.env.NEXT_PUBLIC_USE_MOCK_DATA === 'true';
+    }
+    return true; // Default for client-side initial render
+  });
 
   useEffect(() => {
-    // On client side, get the stored preference
+    // On client side, get the stored preference or use environment variable
     const storedPreference = localStorage.getItem('useMockData');
     if (storedPreference !== null) {
       setUseMockData(storedPreference === 'true');
+    } else {
+      // Use environment variable as default
+      const envDefault = process.env.NEXT_PUBLIC_USE_MOCK_DATA === 'true';
+      setUseMockData(envDefault);
     }
   }, []);
 

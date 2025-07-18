@@ -28,10 +28,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check file type
-    if (!file.name.endsWith('.xlsx') && !file.name.endsWith('.xls')) {
+    // Check file type - support both CSV and Excel
+    const isCSV = file.name.endsWith('.csv');
+    const isExcel = file.name.endsWith('.xlsx') || file.name.endsWith('.xls');
+    
+    if (!isCSV && !isExcel) {
       return NextResponse.json(
-        { error: 'Invalid file format. Please upload an Excel file (.xlsx or .xls)' },
+        { error: 'Invalid file format. Please upload a CSV file (.csv) or Excel file (.xlsx or .xls)' },
         { status: 400 }
       );
     }
@@ -39,11 +42,22 @@ export async function POST(request: NextRequest) {
     // Convert file to buffer
     const buffer = await file.arrayBuffer();
     
-    // Parse Excel file
-    const workbook = XLSX.read(buffer, { type: 'buffer' });
-    const sheetName = workbook.SheetNames[0];
-    const worksheet = workbook.Sheets[sheetName];
-    const data = XLSX.utils.sheet_to_json(worksheet);
+    let data: any[];
+    
+    if (isCSV) {
+      // Parse CSV file
+      const text = new TextDecoder().decode(buffer);
+      const workbook = XLSX.read(text, { type: 'string' });
+      const sheetName = workbook.SheetNames[0];
+      const worksheet = workbook.Sheets[sheetName];
+      data = XLSX.utils.sheet_to_json(worksheet);
+    } else {
+      // Parse Excel file
+      const workbook = XLSX.read(buffer, { type: 'buffer' });
+      const sheetName = workbook.SheetNames[0];
+      const worksheet = workbook.Sheets[sheetName];
+      data = XLSX.utils.sheet_to_json(worksheet);
+    }
 
     // Validate data structure
     if (data.length === 0) {
@@ -53,13 +67,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Expected columns
+    // Expected columns based on actual KPA CSV format
     const requiredColumns = [
-      'reportNumber', 'observer', 'employeeId', 'employeeName',
-      'division', 'homePlant', 'hireDate', 'supervisor',
-      'eventType', 'unitNumber', 'equipmentType', 'jobNumber',
-      'dateTime', 'location', 'plant', 'description',
-      'preventability', 'eventCategory', 'severityRating'
+      'Report #', 'Observer', 'Employee:', 'Division:', 'Home Plant:',
+      'Employee: - Hire Date', 'Employee: - Supervisor', 'Is this an Accident, Incident, Near Miss?',
+      'Date & Time of Accident/Incident:', 'Place of Accident/Incident:', 'Description of Event:',
+      'Any Injuries Involved?', 'Please Select One:', 'Choose type of event'
     ];
 
     // Check if sample row has required columns
@@ -68,7 +81,7 @@ export async function POST(request: NextRequest) {
     
     if (missingColumns.length > 0) {
       return NextResponse.json(
-        { error: `Excel file is missing required columns: ${missingColumns.join(', ')}` },
+        { error: `CSV file is missing required columns: ${missingColumns.join(', ')}. Please ensure your CSV file matches the KPA export format.` },
         { status: 400 }
       );
     }
@@ -77,30 +90,61 @@ export async function POST(request: NextRequest) {
     const result = {
       totalRows: data.length,
       imported: 0,
+      updated: 0,
       errors: 0,
       errorDetails: [] as string[]
     };
 
     for (const row of data) {
       try {
-        const eventData = row as any;
+        const rawData = row as any;
+        
+        // Map KPA CSV columns to our database schema
+        const eventData: any = {
+          reportNumber: rawData['Report #'] || '',
+          link: rawData['Link'] || '',
+          observer: rawData['Observer'] || '',
+          employeeId: rawData['Employee:'] || '', // Using employee name as ID for now
+          employeeName: rawData['Employee:'] || '',
+          division: rawData['Division:'] || '',
+          homePlant: rawData['Home Plant:'] || '',
+          hireDuration: rawData['Employee: - Hire Duration'] || '',
+          supervisor: rawData['Employee: - Supervisor'] || '',
+          eventType: rawData['Is this an Accident, Incident, Near Miss?'] || '',
+          unitNumber: rawData['Unit #:'] || '',
+          equipmentType: rawData['Holliday Equipment Type:'] || '',
+          jobNumber: rawData['Job#'] || '',
+          location: rawData['Place of Accident/Incident:'] || '',
+          plant: rawData['Plant:'] || '',
+          videoLink: rawData['Attach Video'] || '',
+          description: rawData['Description of Event:'] || '',
+          injuries: rawData['Any Injuries Involved?'] === 'Yes',
+          preventability: rawData['Please Select One:'] || '',
+          eventCategory: rawData['Choose type of event'] || '',
+          severityRating: 1, // Default severity rating, can be updated later
+        };
         
         // Format date fields
-        if (eventData.hireDate) {
-          if (typeof eventData.hireDate === 'string') {
-            eventData.hireDate = new Date(eventData.hireDate);
-          } else if (typeof eventData.hireDate === 'number') {
+        if (rawData['Employee: - Hire Date']) {
+          if (typeof rawData['Employee: - Hire Date'] === 'string') {
+            eventData.hireDate = new Date(rawData['Employee: - Hire Date']);
+          } else if (typeof rawData['Employee: - Hire Date'] === 'number') {
             // Excel stores dates as serial numbers, convert to JS date
-            eventData.hireDate = XLSX.SSF.parse_date_code(eventData.hireDate);
+            eventData.hireDate = new Date((rawData['Employee: - Hire Date'] - 25569) * 86400 * 1000);
           }
         }
         
-        if (eventData.dateTime) {
-          if (typeof eventData.dateTime === 'string') {
-            eventData.dateTime = new Date(eventData.dateTime);
-          } else if (typeof eventData.dateTime === 'number') {
-            eventData.dateTime = XLSX.SSF.parse_date_code(eventData.dateTime);
+        if (rawData['Date & Time of Accident/Incident:']) {
+          if (typeof rawData['Date & Time of Accident/Incident:'] === 'string') {
+            eventData.dateTime = new Date(rawData['Date & Time of Accident/Incident:']);
+          } else if (typeof rawData['Date & Time of Accident/Incident:'] === 'number') {
+            eventData.dateTime = new Date((rawData['Date & Time of Accident/Incident:'] - 25569) * 86400 * 1000);
           }
+        }
+        
+        // Validate required fields
+        if (!eventData.reportNumber || !eventData.employeeName || !eventData.dateTime) {
+          throw new Error('Missing required fields: Report #, Employee, or Date & Time');
         }
         
         // Check for existing event with same report number
@@ -111,20 +155,20 @@ export async function POST(request: NextRequest) {
         if (existingEvent) {
           // Update existing event
           await KpaEventModel.findByIdAndUpdate(existingEvent._id, eventData);
+          result.updated++;
         } else {
           // Create new event
           await KpaEventModel.create(eventData);
+          result.imported++;
         }
-        
-        result.imported++;
       } catch (error: any) {
         result.errors++;
-        result.errorDetails.push(`Row ${result.imported + result.errors}: ${error.message}`);
+        result.errorDetails.push(`Row ${result.imported + result.updated + result.errors}: ${error.message}`);
       }
     }
 
     return NextResponse.json({ 
-      message: `Import completed. ${result.imported} records imported, ${result.errors} errors.`,
+      message: `Import completed. ${result.imported} records imported, ${result.updated} records updated, ${result.errors} errors.`,
       result 
     });
   } catch (error: any) {

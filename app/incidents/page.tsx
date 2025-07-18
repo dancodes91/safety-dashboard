@@ -6,259 +6,70 @@ import DataTable from '@/components/DataTable';
 import KpiStatusCard, { StatusType } from '@/components/KpiStatusCard';
 import Chart from '@/components/Chart';
 import FileUpload from '@/components/FileUpload';
-import { FiFilter, FiCalendar, FiDownload, FiUpload } from 'react-icons/fi';
+import { FiFilter, FiCalendar, FiDownload, FiUpload, FiToggleLeft, FiToggleRight } from 'react-icons/fi';
+import { DataService } from '@/lib/dataService';
+import { useDataSource } from '@/lib/context/DataSourceContext';
+import { KpaEvent } from '@/types/KpaEvent';
 
-// Simulated KPI data
-const kpiData = [
-  {
-    title: 'Total Incidents',
-    currentValue: 28,
-    targetValue: 0,
-    status: 'red' as StatusType,
-    unit: '',
-    change: -3,
-    description: 'Total number of reported incidents in current period',
-    tooltipText: 'Target is zero incidents. Any incident requires attention.',
-  },
-  {
-    title: 'Incident Rate',
-    currentValue: 2.4,
-    targetValue: 2.0,
-    status: 'yellow' as StatusType,
-    unit: '%',
-    change: -0.3,
-    description: 'Number of recordable incidents per 100 full-time employees',
-    tooltipText: 'Target is below 2.0%. Current status requires attention.',
-  },
-  {
-    title: 'Near Misses',
-    currentValue: 45,
-    targetValue: 'N/A',
-    status: 'neutral' as StatusType,
-    unit: '',
-    change: 5,
-    description: 'Near miss reports (potential incidents that did not occur)',
-    tooltipText: 'No specific target, but tracked for prevention insights.',
-  },
-  {
-    title: 'Avg. Closure Time',
-    currentValue: 12.5,
-    targetValue: 10,
-    status: 'yellow' as StatusType,
-    unit: ' days',
-    change: -2.3,
-    description: 'Average time to close incident investigations',
-    tooltipText: 'Target is 10 days or less. Improving from previous period.',
-  },
-];
 
-// Simulated incident trend data
-const incidentTrendData = {
-  labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
-  datasets: [
-    {
-      label: 'Recordable Incidents',
-      data: [5, 3, 6, 4, 2, 8],
-      backgroundColor: 'rgba(239, 68, 68, 0.5)',
-      borderColor: 'rgb(239, 68, 68)',
-      borderWidth: 1,
-    },
-    {
-      label: 'Near Misses',
-      data: [12, 9, 15, 11, 7, 10],
-      backgroundColor: 'rgba(249, 115, 22, 0.5)',
-      borderColor: 'rgb(249, 115, 22)',
-      borderWidth: 1,
-    },
-  ],
-};
-
-// Simulated incident type data for pie chart
-const incidentTypeData = {
-  labels: ['Vehicle Accident', 'Property Damage', 'Injury', 'Near Miss', 'Other'],
-  datasets: [
-    {
-      label: 'Incident Types',
-      data: [8, 5, 12, 45, 3],
-      backgroundColor: [
-        'rgba(239, 68, 68, 0.7)',
-        'rgba(249, 115, 22, 0.7)',
-        'rgba(234, 179, 8, 0.7)',
-        'rgba(16, 185, 129, 0.7)',
-        'rgba(99, 102, 241, 0.7)',
-      ],
-      borderColor: [
-        'rgb(239, 68, 68)',
-        'rgb(249, 115, 22)',
-        'rgb(234, 179, 8)',
-        'rgb(16, 185, 129)',
-        'rgb(99, 102, 241)',
-      ],
-      borderWidth: 1,
-    },
-  ],
-};
-
-// Simulated incident data
-const incidents = [
-  { 
-    id: 'INC-001', 
-    reportNumber: 'KPA-2023-001',
-    date: '2023-06-15', 
-    time: '14:30',
-    location: 'Route 66 Mile Marker 42',
-    employeeId: 'EMP-1042',
-    employeeName: 'John Smith',
-    type: 'Vehicle Accident', 
-    severity: 'High', 
-    description: 'Delivery truck side-swiped a parked vehicle while making a delivery.',
-    status: 'Under Investigation',
-    assignedTo: 'Sarah Johnson',
-    reportedBy: 'Michael Brown',
-  },
-  { 
-    id: 'INC-002', 
-    reportNumber: 'KPA-2023-002',
-    date: '2023-06-10', 
-    time: '09:15',
-    location: 'Warehouse A, Loading Dock 3',
-    employeeId: 'EMP-3821',
-    employeeName: 'Robert Garcia',
-    type: 'Near Miss', 
-    severity: 'Medium', 
-    description: 'Forklift operator nearly collided with pedestrian in marked walkway.',
-    status: 'Closed',
-    assignedTo: 'James Wilson',
-    reportedBy: 'David Lee',
-  },
-  { 
-    id: 'INC-003',
-    reportNumber: 'KPA-2023-003', 
-    date: '2023-06-05', 
-    time: '11:45',
-    location: 'Main Office, Parking Lot',
-    employeeId: 'EMP-7569',
-    employeeName: 'Jennifer Lopez',
-    type: 'Property Damage', 
-    severity: 'Low', 
-    description: 'Company vehicle backed into light pole, causing minor damage to bumper.',
-    status: 'Resolved',
-    assignedTo: 'Thomas Anderson',
-    reportedBy: 'Maria Rodriguez',
-  },
-  { 
-    id: 'INC-004',
-    reportNumber: 'KPA-2023-004', 
-    date: '2023-06-01', 
-    time: '13:20',
-    location: 'Maintenance Shop',
-    employeeId: 'EMP-4217',
-    employeeName: 'William Davis',
-    type: 'Injury', 
-    severity: 'Medium', 
-    description: 'Technician sustained minor laceration while servicing equipment.',
-    status: 'Under Investigation',
-    assignedTo: 'Sarah Johnson',
-    reportedBy: 'Richard Martin',
-  },
-  { 
-    id: 'INC-005',
-    reportNumber: 'KPA-2023-005', 
-    date: '2023-05-28', 
-    time: '07:50',
-    location: 'Highway 95, Mile Marker 23',
-    employeeId: 'EMP-6392',
-    employeeName: 'Daniel White',
-    type: 'Vehicle Accident', 
-    severity: 'High', 
-    description: 'Delivery truck hydroplaned during rain storm and struck guardrail.',
-    status: 'Closed',
-    assignedTo: 'James Wilson',
-    reportedBy: 'Patricia Moore',
-  },
-  { 
-    id: 'INC-006',
-    reportNumber: 'KPA-2023-006', 
-    date: '2023-05-25', 
-    time: '15:10',
-    location: 'Warehouse B, Aisle 7',
-    employeeId: 'EMP-5183',
-    employeeName: 'Susan Thompson',
-    type: 'Near Miss', 
-    severity: 'Low', 
-    description: 'Improperly stacked boxes fell from shelf, narrowly missing employee.',
-    status: 'Resolved',
-    assignedTo: 'Thomas Anderson',
-    reportedBy: 'Karen Phillips',
-  },
-  { 
-    id: 'INC-007',
-    reportNumber: 'KPA-2023-007', 
-    date: '2023-05-20', 
-    time: '10:35',
-    location: 'Customer Site, 123 Main St',
-    employeeId: 'EMP-8241',
-    employeeName: 'Christopher Taylor',
-    type: 'Injury', 
-    severity: 'Medium', 
-    description: 'Delivery personnel strained back while lifting heavy package.',
-    status: 'Closed',
-    assignedTo: 'Sarah Johnson',
-    reportedBy: 'Jason Adams',
-  },
-  { 
-    id: 'INC-008',
-    reportNumber: 'KPA-2023-008', 
-    date: '2023-05-15', 
-    time: '09:30',
-    location: 'Maintenance Shop, Bay 3',
-    employeeId: 'EMP-3712',
-    employeeName: 'Michael Jones',
-    type: 'Property Damage', 
-    severity: 'Low', 
-    description: 'Tool dropped and damaged customer equipment during scheduled maintenance.',
-    status: 'Resolved',
-    assignedTo: 'James Wilson',
-    reportedBy: 'Amanda King',
-  },
-];
 
 // Table columns definition
 const incidentColumns = [
-  { header: 'ID', accessorKey: 'id', sortable: true },
   { header: 'Report #', accessorKey: 'reportNumber', sortable: true },
-  { header: 'Date', accessorKey: 'date', sortable: true },
-  { header: 'Type', accessorKey: 'type', sortable: true },
-  { header: 'Location', accessorKey: 'location', sortable: true },
+  { 
+    header: 'Date', 
+    accessorKey: 'dateTime', 
+    sortable: true,
+    cell: ({ row }: { row: any }) => {
+      const date = new Date(row.dateTime);
+      return date.toLocaleDateString();
+    }
+  },
   { header: 'Employee', accessorKey: 'employeeName', sortable: true },
-  { header: 'Severity', accessorKey: 'severity', sortable: true, 
-    cell: ({ row }) => {
-      const severity = row.severity;
+  { header: 'Division', accessorKey: 'division', sortable: true },
+  { header: 'Location', accessorKey: 'location', sortable: true },
+  { header: 'Event Category', accessorKey: 'eventCategory', sortable: true },
+  { 
+    header: 'Severity', 
+    accessorKey: 'severityRating', 
+    sortable: true, 
+    cell: ({ row }: { row: any }) => {
+      const severity = row.severityRating;
       let colorClass = 'bg-gray-100 text-gray-800';
+      let label = 'Unknown';
       
-      if (severity === 'High') colorClass = 'bg-red-100 text-red-800';
-      else if (severity === 'Medium') colorClass = 'bg-yellow-100 text-yellow-800';
-      else if (severity === 'Low') colorClass = 'bg-green-100 text-green-800';
+      if (severity === 1) {
+        colorClass = 'bg-green-100 text-green-800';
+        label = 'Low';
+      } else if (severity === 2) {
+        colorClass = 'bg-yellow-100 text-yellow-800';
+        label = 'Medium';
+      } else if (severity >= 3) {
+        colorClass = 'bg-red-100 text-red-800';
+        label = 'High';
+      }
       
       return (
         <span className={`px-2 py-1 rounded-full text-xs ${colorClass}`}>
-          {severity}
+          {label}
         </span>
       );
     }
   },
-  { header: 'Status', accessorKey: 'status', sortable: true,
-    cell: ({ row }) => {
-      const status = row.status;
+  { 
+    header: 'Preventability', 
+    accessorKey: 'preventability', 
+    sortable: true,
+    cell: ({ row }: { row: any }) => {
+      const preventability = row.preventability;
       let colorClass = 'bg-gray-100 text-gray-800';
       
-      if (status === 'Under Investigation') colorClass = 'bg-blue-100 text-blue-800';
-      else if (status === 'Closed') colorClass = 'bg-green-100 text-green-800';
-      else if (status === 'Resolved') colorClass = 'bg-green-100 text-green-800';
+      if (preventability === 'Preventable') colorClass = 'bg-red-100 text-red-800';
+      else if (preventability === 'Non-Preventable') colorClass = 'bg-blue-100 text-blue-800';
       
       return (
         <span className={`px-2 py-1 rounded-full text-xs ${colorClass}`}>
-          {status}
+          {preventability}
         </span>
       );
     }
@@ -269,38 +80,115 @@ export default function IncidentsPage() {
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState({ name: 'Demo User', email: 'demo@example.com' });
   const [showImportModal, setShowImportModal] = useState(false);
+  const [incidents, setIncidents] = useState<KpaEvent[]>([]);
+  const [incidentStats, setIncidentStats] = useState<any>(null);
+  const [kpiData, setKpiData] = useState<any[]>([]);
+  const [incidentTrendData, setIncidentTrendData] = useState<any>(null);
+  const [incidentTypeData, setIncidentTypeData] = useState<any>(null);
+  const [filters, setFilters] = useState({
+    division: '',
+    eventType: '',
+    preventability: '',
+    startDate: '',
+    endDate: '',
+  });
   
-  useEffect(() => {
-    // Simulate loading data
-    setTimeout(() => {
-      setLoading(false);
-    }, 1000);
-  }, []);
+  const { useMockData, toggleDataSource } = useDataSource();
 
-  const handleRowClick = (incident) => {
+  useEffect(() => {
+    loadIncidents();
+    loadIncidentStats();
+    loadKpiData();
+    loadChartData();
+  }, [useMockData, filters]);
+
+  const loadIncidents = async () => {
+    try {
+      setLoading(true);
+      const response = await DataService.getKpaEvents(filters);
+      setIncidents(response.events);
+    } catch (error) {
+      console.error('Error loading incidents:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadIncidentStats = async () => {
+    try {
+      const stats = await DataService.getIncidentStats();
+      setIncidentStats(stats);
+    } catch (error) {
+      console.error('Error loading incident stats:', error);
+    }
+  };
+
+  const loadKpiData = async () => {
+    try {
+      const kpis = await DataService.getIncidentKpis();
+      setKpiData(kpis);
+    } catch (error) {
+      console.error('Error loading KPI data:', error);
+    }
+  };
+
+  const loadChartData = async () => {
+    try {
+      const [trendData, typeData] = await Promise.all([
+        DataService.getIncidentChartData('trend'),
+        DataService.getIncidentChartData('types')
+      ]);
+      setIncidentTrendData(trendData);
+      setIncidentTypeData(typeData);
+    } catch (error) {
+      console.error('Error loading chart data:', error);
+    }
+  };
+
+  const handleRowClick = (incident: any) => {
     // This would navigate to an incident detail page in a real application
     console.log('Incident selected:', incident);
     // router.push(`/incidents/${incident.id}`);
   };
 
-  const handleImportData = async (file) => {
-    // In a real application, this would send the file to the API
-    console.log('Importing file:', file);
-    
-    // Simulate API response
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        resolve({
-          message: 'File processed successfully',
-          result: {
-            totalRows: 15,
-            imported: 12,
-            updated: 3,
-            errors: 0
-          }
-        });
-      }, 2000);
-    });
+  const handleImportData = async (file: File) => {
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const response = await fetch('/api/import/kpa-events', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to import data');
+      }
+
+      const result = await response.json();
+      
+      // Refresh the incidents data after successful import
+      await loadIncidents();
+      await loadIncidentStats();
+      
+      return {
+        message: result.message || 'File processed successfully',
+        result: result.result || {
+          totalRows: result.totalRows || 0,
+          imported: result.imported || 0,
+          updated: result.updated || 0,
+          errors: result.errors || 0
+        }
+      };
+    } catch (error) {
+      console.error('Error importing file:', error);
+      throw error;
+    }
+  };
+
+  const handleFilterChange = (key: string, value: string) => {
+    setFilters(prev => ({ ...prev, [key]: value }));
   };
 
   return (
@@ -313,7 +201,27 @@ export default function IncidentsPage() {
         <div className="space-y-6">
           {/* Page header */}
           <div className="sm:flex sm:items-center sm:justify-between">
-            <h1 className="text-2xl font-semibold text-gray-900">Incidents Dashboard</h1>
+            <div className="flex items-center space-x-4">
+              <h1 className="text-2xl font-semibold text-gray-900">Incidents Dashboard</h1>
+              <div className="flex items-center space-x-2">
+                <span className="text-sm text-gray-500">
+                  {useMockData ? 'Mock Data' : 'Database'}
+                </span>
+                <button
+                  type="button"
+                  className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 ${
+                    useMockData ? 'bg-gray-200' : 'bg-primary-600'
+                  }`}
+                  onClick={toggleDataSource}
+                >
+                  <span
+                    className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                      useMockData ? 'translate-x-0' : 'translate-x-5'
+                    }`}
+                  />
+                </button>
+              </div>
+            </div>
             <div className="mt-3 sm:mt-0 sm:ml-4">
               <div className="flex space-x-3">
                 <button
@@ -421,14 +329,12 @@ export default function IncidentsPage() {
               type="bar"
               data={incidentTrendData}
               description="Monthly breakdown of incidents and near misses"
-              downloadFileName="incident_trends"
             />
             <Chart
               title="Incident Types"
               type="pie"
               data={incidentTypeData}
               description="Distribution of incidents by type"
-              downloadFileName="incident_types"
             />
           </div>
 

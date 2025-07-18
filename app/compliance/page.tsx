@@ -6,106 +6,12 @@ import DataTable from '@/components/DataTable';
 import KpiStatusCard, { StatusType } from '@/components/KpiStatusCard';
 import Chart from '@/components/Chart';
 import FileUpload from '@/components/FileUpload';
-import { FiFilter, FiCalendar, FiDownload, FiUpload, FiCheck, FiX, FiClock } from 'react-icons/fi';
+import { FiFilter, FiCalendar, FiDownload, FiUpload, FiCheck, FiX, FiClock, FiToggleLeft, FiToggleRight } from 'react-icons/fi';
+import { DataService } from '@/lib/dataService';
+import { useDataSource } from '@/lib/context/DataSourceContext';
 
-// Simulated KPI data
-const kpiData = [
-  {
-    title: 'Overall Compliance',
-    currentValue: 94.5,
-    targetValue: 100,
-    status: 'yellow' as StatusType,
-    unit: '%',
-    change: 2.3,
-    description: 'Overall regulatory compliance score across all departments',
-    tooltipText: 'Target is 100%. Current score shows improvement from last period.',
-  },
-  {
-    title: 'Audit Readiness',
-    currentValue: 92,
-    targetValue: 95,
-    status: 'yellow' as StatusType,
-    unit: '%',
-    change: 3,
-    description: 'Preparedness for regulatory compliance audits',
-    tooltipText: 'Target is 95% or above. Based on document completeness and protocol adherence.',
-  },
-  {
-    title: 'Open Violations',
-    currentValue: 2,
-    targetValue: 0,
-    status: 'red' as StatusType,
-    unit: '',
-    change: -3,
-    description: 'Number of unresolved regulatory violations',
-    tooltipText: 'Target is zero violations. Improvement from 5 violations in previous period.',
-  },
-  {
-    title: 'Upcoming Deadlines',
-    currentValue: 6,
-    targetValue: 'N/A',
-    status: 'neutral' as StatusType,
-    unit: '',
-    change: 0,
-    description: 'Regulatory filings due in next 30 days',
-    tooltipText: 'Informational metric to track upcoming compliance requirements.',
-  },
-];
-
-// Simulated compliance trend data
-const complianceTrendData = {
-  labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
-  datasets: [
-    {
-      label: 'Overall Compliance %',
-      data: [87, 88, 90, 92, 93, 94.5],
-      backgroundColor: 'rgba(52, 211, 153, 0.2)',
-      borderColor: 'rgb(52, 211, 153)',
-      borderWidth: 2,
-      tension: 0.3,
-      fill: true,
-    },
-    {
-      label: 'Target',
-      data: [100, 100, 100, 100, 100, 100],
-      backgroundColor: 'rgba(0, 0, 0, 0)',
-      borderColor: 'rgba(0, 0, 0, 0.2)',
-      borderWidth: 2,
-      borderDash: [5, 5],
-    },
-  ],
-};
-
-// Simulated department compliance data for bar chart
-const departmentComplianceData = {
-  labels: ['Operations', 'Maintenance', 'Safety', 'HR', 'Administration', 'Logistics'],
-  datasets: [
-    {
-      label: 'Compliance %',
-      data: [97, 92, 96, 98, 95, 91],
-      backgroundColor: [
-        'rgba(52, 211, 153, 0.7)',
-        'rgba(250, 204, 21, 0.7)',
-        'rgba(56, 189, 248, 0.7)',
-        'rgba(167, 139, 250, 0.7)',
-        'rgba(251, 146, 60, 0.7)',
-        'rgba(251, 113, 133, 0.7)',
-      ],
-      borderColor: [
-        'rgb(52, 211, 153)',
-        'rgb(250, 204, 21)',
-        'rgb(56, 189, 248)',
-        'rgb(167, 139, 250)',
-        'rgb(251, 146, 60)',
-        'rgb(251, 113, 133)',
-      ],
-      borderWidth: 1,
-    },
-  ],
-};
-
-// Simulated regulatory requirements data
-const regulations = [
+// Simulated regulatory requirements data (will be moved to mockData.ts)
+const mockRegulations = [
   { 
     id: 'REG-001', 
     title: 'DOT Hours of Service Compliance',
@@ -206,7 +112,7 @@ const regulationColumns = [
     header: 'Status', 
     accessorKey: 'status', 
     sortable: true,
-    cell: ({ row }) => {
+    cell: ({ row }: { row: any }) => {
       const status = row.status;
       let colorClass = 'bg-gray-100 text-gray-800';
       let icon = null;
@@ -238,7 +144,7 @@ const regulationColumns = [
     header: 'Documents', 
     accessorKey: 'documents', 
     sortable: true,
-    cell: ({ row }) => {
+    cell: ({ row }: { row: any }) => {
       const count = row.documents;
       return (
         <span className="inline-flex items-center rounded-full bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700">
@@ -251,7 +157,7 @@ const regulationColumns = [
     header: 'Completion Date', 
     accessorKey: 'completionDate', 
     sortable: true,
-    cell: ({ row }) => {
+    cell: ({ row }: { row: any }) => {
       return row.completionDate || '—';
     }
   },
@@ -261,21 +167,45 @@ export default function CompliancePage() {
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState({ name: 'Demo User', email: 'demo@example.com' });
   const [showImportModal, setShowImportModal] = useState(false);
+  const [kpiData, setKpiData] = useState<any[]>([]);
+  const [complianceTrendData, setComplianceTrendData] = useState<any>(null);
+  const [departmentComplianceData, setDepartmentComplianceData] = useState<any>(null);
+  const [regulations, setRegulations] = useState<any[]>([]);
   
-  useEffect(() => {
-    // Simulate loading data
-    setTimeout(() => {
-      setLoading(false);
-    }, 1000);
-  }, []);
+  const { useMockData, toggleDataSource } = useDataSource();
 
-  const handleRowClick = (regulation) => {
+  useEffect(() => {
+    loadComplianceData();
+  }, [useMockData]);
+
+  const loadComplianceData = async () => {
+    try {
+      setLoading(true);
+      const [kpis, trendData, deptData, regulationsData] = await Promise.all([
+        DataService.getComplianceKpis(),
+        DataService.getComplianceChartData('trend'),
+        DataService.getComplianceChartData('department'),
+        DataService.getRegulations()
+      ]);
+      
+      setKpiData(kpis);
+      setComplianceTrendData(trendData);
+      setDepartmentComplianceData(deptData);
+      setRegulations(regulationsData);
+    } catch (error) {
+      console.error('Error loading compliance data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRowClick = (regulation: any) => {
     // This would navigate to a regulation detail page in a real application
     console.log('Regulation selected:', regulation);
     // router.push(`/compliance/${regulation.id}`);
   };
 
-  const handleImportData = async (file) => {
+  const handleImportData = async (file: File) => {
     // In a real application, this would send the file to the API
     console.log('Importing file:', file);
     
@@ -415,14 +345,12 @@ export default function CompliancePage() {
               type="line"
               data={complianceTrendData}
               description="Overall compliance percentage over time"
-              downloadFileName="compliance_trend"
             />
             <Chart
               title="Compliance by Department"
               type="bar"
               data={departmentComplianceData}
               description="Current compliance score by department"
-              downloadFileName="department_compliance"
             />
           </div>
 

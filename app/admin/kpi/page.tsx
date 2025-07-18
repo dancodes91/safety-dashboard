@@ -202,12 +202,30 @@ const sampleKpiGoals = [
   },
 ];
 
+// Define the KPI type
+type KpiGoal = {
+  id: string;
+  metricName: string;
+  description: string;
+  targetValue: number;
+  yellowThreshold: number;
+  redThreshold: number;
+  unit: string;
+  division: string;
+  plant: string;
+  applicableTo: string;
+  effectiveDate: string;
+  expirationDate: string;
+  currentValue: number;
+  status: string;
+};
+
 export default function KpiManagementPage() {
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState({ name: 'Admin User', email: 'admin@example.com' });
-  const [kpiGoals, setKpiGoals] = useState([]);
+  const [kpiGoals, setKpiGoals] = useState<KpiGoal[]>([]);
   const [showAddModal, setShowAddModal] = useState(false);
-  const [editingKpi, setEditingKpi] = useState(null);
+  const [editingKpi, setEditingKpi] = useState<KpiGoal | null>(null);
 
   useEffect(() => {
     // Simulate loading data
@@ -224,28 +242,28 @@ export default function KpiManagementPage() {
     { header: 'Target', 
       accessorKey: 'targetValue', 
       sortable: true,
-      cell: ({ row }) => {
+      cell: ({ row }: { row: KpiGoal }) => {
         return `${row.targetValue}${row.unit ? ' ' + row.unit : ''}`;
       }
     },
     { header: 'Yellow Threshold', 
       accessorKey: 'yellowThreshold', 
       sortable: true,
-      cell: ({ row }) => {
+      cell: ({ row }: { row: KpiGoal }) => {
         return `${row.yellowThreshold}${row.unit ? ' ' + row.unit : ''}`;
       }
     },
     { header: 'Red Threshold', 
       accessorKey: 'redThreshold', 
       sortable: true,
-      cell: ({ row }) => {
+      cell: ({ row }: { row: KpiGoal }) => {
         return `${row.redThreshold}${row.unit ? ' ' + row.unit : ''}`;
       }
     },
     { header: 'Current Value', 
       accessorKey: 'currentValue', 
       sortable: true,
-      cell: ({ row }) => {
+      cell: ({ row }: { row: KpiGoal }) => {
         const status = row.status;
         let colorClass = 'text-gray-800';
         
@@ -264,8 +282,9 @@ export default function KpiManagementPage() {
     { header: 'Applicable To', accessorKey: 'applicableTo', sortable: true },
     { header: 'Effective Date', accessorKey: 'effectiveDate', sortable: true },
     { 
-      header: 'Actions', 
-      cell: ({ row }) => (
+      header: 'Actions',
+      accessorKey: 'id',
+      cell: ({ row }: { row: KpiGoal }) => (
         <div className="flex space-x-2">
           <button
             onClick={() => handleEditKpi(row)}
@@ -284,12 +303,12 @@ export default function KpiManagementPage() {
     },
   ];
 
-  const handleEditKpi = (kpi) => {
+  const handleEditKpi = (kpi: KpiGoal) => {
     setEditingKpi(kpi);
     setShowAddModal(true);
   };
 
-  const handleDeleteKpi = (id) => {
+  const handleDeleteKpi = (id: string) => {
     // In a real app, this would call an API
     setKpiGoals(kpiGoals.filter(kpi => kpi.id !== id));
   };
@@ -305,17 +324,18 @@ export default function KpiManagementPage() {
   };
 
   // This would be expanded in a real app
-  const handleSaveKpi = (kpiData) => {
+  const handleSaveKpi = (kpiData: Partial<KpiGoal>) => {
     // In a real app, this would call an API
     if (editingKpi) {
       setKpiGoals(kpiGoals.map(kpi => kpi.id === editingKpi.id ? { ...kpi, ...kpiData } : kpi));
     } else {
-      const newKpi = {
+      const newKpi: KpiGoal = {
         id: `kpi-${String(kpiGoals.length + 1).padStart(3, '0')}`,
-        ...kpiData,
+        plant: 'All',
         status: 'green',
         currentValue: 0,
-      };
+        ...kpiData,
+      } as KpiGoal;
       setKpiGoals([...kpiGoals, newKpi]);
     }
     setShowAddModal(false);
@@ -653,16 +673,16 @@ export default function KpiManagementPage() {
                   className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-primary-600 text-base font-medium text-white hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 sm:ml-3 sm:w-auto sm:text-sm"
                   onClick={() => handleSaveKpi({
                     // In a real app, this would gather form values properly
-                    metricName: document.getElementById('metricName').value,
-                    description: document.getElementById('description').value,
-                    targetValue: parseFloat(document.getElementById('targetValue').value),
-                    yellowThreshold: parseFloat(document.getElementById('yellowThreshold').value),
-                    redThreshold: parseFloat(document.getElementById('redThreshold').value),
-                    unit: document.getElementById('unit').value,
-                    division: document.getElementById('division').value,
-                    applicableTo: document.getElementById('applicableTo').value,
-                    effectiveDate: document.getElementById('effectiveDate').value,
-                    expirationDate: document.getElementById('expirationDate').value,
+                    metricName: (document.getElementById('metricName') as HTMLInputElement)?.value || '',
+                    description: (document.getElementById('description') as HTMLTextAreaElement)?.value || '',
+                    targetValue: parseFloat((document.getElementById('targetValue') as HTMLInputElement)?.value || '0'),
+                    yellowThreshold: parseFloat((document.getElementById('yellowThreshold') as HTMLInputElement)?.value || '0'),
+                    redThreshold: parseFloat((document.getElementById('redThreshold') as HTMLInputElement)?.value || '0'),
+                    unit: (document.getElementById('unit') as HTMLInputElement)?.value || '',
+                    division: (document.getElementById('division') as HTMLSelectElement)?.value || 'All',
+                    applicableTo: (document.getElementById('applicableTo') as HTMLSelectElement)?.value || 'Company',
+                    effectiveDate: (document.getElementById('effectiveDate') as HTMLInputElement)?.value || '2025-01-01',
+                    expirationDate: (document.getElementById('expirationDate') as HTMLInputElement)?.value || '2025-12-31',
                   })}
                 >
                   Save

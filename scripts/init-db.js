@@ -17,10 +17,22 @@ const dotenv = require('dotenv');
 const path = require('path');
 const readline = require('readline');
 
-// Load environment variables from .env.local
-dotenv.config({ path: path.resolve(process.cwd(), '.env.local') });
+// Load environment variables from .env
+dotenv.config({ path: path.resolve(process.cwd(), '.env') });
 
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/safety_dashboard';
+
+// MongoDB Atlas connection options
+const mongoOptions = {
+  retryWrites: true,
+  w: 'majority',
+  serverSelectionTimeoutMS: 30000,
+  socketTimeoutMS: 45000,
+  connectTimeoutMS: 30000,
+  maxPoolSize: 10,
+  minPoolSize: 5,
+  maxIdleTimeMS: 30000
+};
 const withSampleData = process.argv.includes('--with-sample-data');
 
 const rl = readline.createInterface({
@@ -33,7 +45,7 @@ async function initializeDatabase() {
   
   let client;
   try {
-    client = new MongoClient(MONGODB_URI);
+    client = new MongoClient(MONGODB_URI, mongoOptions);
     await client.connect();
     console.log('✅ Connected to MongoDB');
     

@@ -45,7 +45,7 @@ This safety dashboard provides a centralized platform for monitoring and managin
    yarn install
    ```
 
-3. Create a `.env.local` file in the root directory with the following environment variables:
+3. Create a `.env` file in the root directory with the following environment variables:
    ```
    # MongoDB Connection
    MONGODB_URI=mongodb://localhost:27017/safety_dashboard

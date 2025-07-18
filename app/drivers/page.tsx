@@ -7,6 +7,9 @@ import KpiStatusCard, { StatusType } from '@/components/KpiStatusCard';
 import Chart from '@/components/Chart';
 import FileUpload from '@/components/FileUpload';
 import { FiFilter, FiCalendar, FiDownload, FiUpload, FiSearch } from 'react-icons/fi';
+import { DataService } from '@/lib/dataService';
+import { useDataSource } from '@/lib/context/DataSourceContext';
+import { SamsaraDriverRecord } from '@/types/SamsaraDriverRecord';
 
 // Simulated KPI data
 const kpiData = [
@@ -113,244 +116,135 @@ const drivingEventsData = {
   ],
 };
 
-// Simulated driver data
-const drivers = [
-  {
-    id: 'DR-1001',
-    name: 'John Smith',
-    employeeId: 'EMP-1042',
-    division: 'North',
-    vehicle: 'Truck #145',
-    safetyScore: 95,
-    scoreChange: 2,
-    drivingTime: '42.5 hours',
-    speedingEvents: 2,
-    harshAcceleration: 1,
-    harshBraking: 0,
-    harshTurning: 0,
-    distractedDriving: 0,
-    status: 'Active',
-    lastUpdated: '2023-06-15',
-  },
-  {
-    id: 'DR-1002',
-    name: 'Mary Johnson',
-    employeeId: 'EMP-2156',
-    division: 'East',
-    vehicle: 'Van #078',
-    safetyScore: 88,
-    scoreChange: -1,
-    drivingTime: '38.2 hours',
-    speedingEvents: 5,
-    harshAcceleration: 2,
-    harshBraking: 3,
-    harshTurning: 1,
-    distractedDriving: 1,
-    status: 'Active',
-    lastUpdated: '2023-06-14',
-  },
-  {
-    id: 'DR-1003',
-    name: 'Robert Garcia',
-    employeeId: 'EMP-3821',
-    division: 'South',
-    vehicle: 'Truck #132',
-    safetyScore: 97,
-    scoreChange: 1,
-    drivingTime: '45.8 hours',
-    speedingEvents: 1,
-    harshAcceleration: 0,
-    harshBraking: 1,
-    harshTurning: 0,
-    distractedDriving: 0,
-    status: 'Active',
-    lastUpdated: '2023-06-15',
-  },
-  {
-    id: 'DR-1004',
-    name: 'Sarah Williams',
-    employeeId: 'EMP-4972',
-    division: 'West',
-    vehicle: 'Van #103',
-    safetyScore: 91,
-    scoreChange: 3,
-    drivingTime: '36.5 hours',
-    speedingEvents: 3,
-    harshAcceleration: 1,
-    harshBraking: 2,
-    harshTurning: 0,
-    distractedDriving: 0,
-    status: 'Active',
-    lastUpdated: '2023-06-13',
-  },
-  {
-    id: 'DR-1005',
-    name: 'Michael Brown',
-    employeeId: 'EMP-5384',
-    division: 'North',
-    vehicle: 'Truck #118',
-    safetyScore: 79,
-    scoreChange: -4,
-    drivingTime: '40.2 hours',
-    speedingEvents: 8,
-    harshAcceleration: 3,
-    harshBraking: 4,
-    harshTurning: 2,
-    distractedDriving: 2,
-    status: 'Warning',
-    lastUpdated: '2023-06-14',
-  },
-  {
-    id: 'DR-1006',
-    name: 'Jennifer Lopez',
-    employeeId: 'EMP-7569',
-    division: 'East',
-    vehicle: 'Van #095',
-    safetyScore: 93,
-    scoreChange: 5,
-    drivingTime: '39.8 hours',
-    speedingEvents: 2,
-    harshAcceleration: 1,
-    harshBraking: 1,
-    harshTurning: 0,
-    distractedDriving: 0,
-    status: 'Active',
-    lastUpdated: '2023-06-15',
-  },
-  {
-    id: 'DR-1007',
-    name: 'William Davis',
-    employeeId: 'EMP-4217',
-    division: 'South',
-    vehicle: 'Truck #127',
-    safetyScore: 85,
-    scoreChange: 2,
-    drivingTime: '42.0 hours',
-    speedingEvents: 4,
-    harshAcceleration: 2,
-    harshBraking: 3,
-    harshTurning: 1,
-    distractedDriving: 0,
-    status: 'Active',
-    lastUpdated: '2023-06-13',
-  },
-  {
-    id: 'DR-1008',
-    name: 'Daniel White',
-    employeeId: 'EMP-6392',
-    division: 'West',
-    vehicle: 'Van #087',
-    safetyScore: 82,
-    scoreChange: -2,
-    drivingTime: '37.5 hours',
-    speedingEvents: 5,
-    harshAcceleration: 2,
-    harshBraking: 2,
-    harshTurning: 1,
-    distractedDriving: 1,
-    status: 'Active',
-    lastUpdated: '2023-06-14',
-  },
-];
-
 // Table columns definition
 const driverColumns = [
-  { header: 'ID', accessorKey: 'id', sortable: true },
-  { header: 'Name', accessorKey: 'name', sortable: true },
-  { header: 'Division', accessorKey: 'division', sortable: true },
-  { header: 'Vehicle', accessorKey: 'vehicle', sortable: true },
+  { header: 'Rank', accessorKey: 'rank', sortable: true },
+  { header: 'Driver Name', accessorKey: 'driverName', sortable: true },
+  { header: 'Driver Tags', accessorKey: 'driverTags', sortable: true },
   { 
     header: 'Safety Score', 
     accessorKey: 'safetyScore', 
     sortable: true,
-    cell: ({ row }) => {
+    cell: ({ row }: { row: any }) => {
       const score = row.safetyScore;
-      const change = row.scoreChange;
       let scoreClass = 'text-gray-800';
       
-      if (score >= 95) scoreClass = 'text-success-600 font-semibold';
-      else if (score >= 85) scoreClass = 'text-warning-600';
-      else scoreClass = 'text-danger-600 font-semibold';
+      if (score >= 95) scoreClass = 'text-green-600 font-semibold';
+      else if (score >= 85) scoreClass = 'text-yellow-600';
+      else scoreClass = 'text-red-600 font-semibold';
       
       return (
-        <div className="flex items-center">
-          <span className={scoreClass}>{score}</span>
-          {change !== 0 && (
-            <span className={`ml-1 text-xs ${change > 0 ? 'text-success-600' : 'text-danger-600'}`}>
-              {change > 0 ? `+${change}` : change}
-            </span>
-          )}
-        </div>
+        <span className={scoreClass}>{score}</span>
       );
     }
   },
-  { header: 'Speeding', accessorKey: 'speedingEvents', sortable: true },
-  { header: 'Harsh Events', 
-    sortable: true,
-    cell: ({ row }) => {
-      const total = row.harshAcceleration + row.harshBraking + row.harshTurning;
-      return total;
-    }
-  },
-  { header: 'Distracted', accessorKey: 'distractedDriving', sortable: true },
+  { header: 'Drive Time', accessorKey: 'driveTime', sortable: true },
+  { header: 'Distance (mi)', accessorKey: 'totalDistance', sortable: true },
+  { header: 'Total Events', accessorKey: 'totalEvents', sortable: true },
+  { header: 'Total Behaviors', accessorKey: 'totalBehaviors', sortable: true },
   { 
-    header: 'Status', 
-    accessorKey: 'status', 
+    header: 'Max Speed', 
+    accessorKey: 'speedingData', 
     sortable: true,
-    cell: ({ row }) => {
-      const status = row.status;
-      let colorClass = 'bg-gray-100 text-gray-800';
-      
-      if (status === 'Active') colorClass = 'bg-green-100 text-green-800';
-      else if (status === 'Warning') colorClass = 'bg-yellow-100 text-yellow-800';
-      else if (status === 'Suspended') colorClass = 'bg-red-100 text-red-800';
-      
-      return (
-        <span className={`px-2 py-1 rounded-full text-xs ${colorClass}`}>
-          {status}
-        </span>
-      );
+    cell: ({ row }: { row: any }) => {
+      return `${row.speedingData?.maxSpeed || 0} mph`;
     }
   },
-  { header: 'Last Updated', accessorKey: 'lastUpdated', sortable: true },
+  { 
+    header: 'Week Period', 
+    accessorKey: 'weekStartDate', 
+    sortable: true,
+    cell: ({ row }: { row: any }) => {
+      const startDate = new Date(row.weekStartDate);
+      const endDate = new Date(row.weekEndDate);
+      return `${startDate.toLocaleDateString()} - ${endDate.toLocaleDateString()}`;
+    }
+  },
 ];
 
 export default function DriversPage() {
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState({ name: 'Demo User', email: 'demo@example.com' });
   const [showImportModal, setShowImportModal] = useState(false);
+  const [drivers, setDrivers] = useState<SamsaraDriverRecord[]>([]);
+  const [driverStats, setDriverStats] = useState<any>(null);
+  const [filters, setFilters] = useState({
+    driverName: '',
+    division: '',
+  });
   
-  useEffect(() => {
-    // Simulate loading data
-    setTimeout(() => {
-      setLoading(false);
-    }, 1000);
-  }, []);
+  const { useMockData, toggleDataSource } = useDataSource();
 
-  const handleRowClick = (driver) => {
+  useEffect(() => {
+    loadDrivers();
+    loadDriverStats();
+  }, [useMockData, filters]);
+
+  const loadDrivers = async () => {
+    try {
+      setLoading(true);
+      const response = await DataService.getSamsaraRecords(filters);
+      setDrivers(response.records);
+    } catch (error) {
+      console.error('Error loading drivers:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadDriverStats = async () => {
+    try {
+      const stats = await DataService.getDriverStats();
+      setDriverStats(stats);
+    } catch (error) {
+      console.error('Error loading driver stats:', error);
+    }
+  };
+
+  const handleRowClick = (driver: any) => {
     // This would navigate to a driver detail page in a real application
     console.log('Driver selected:', driver);
     // router.push(`/drivers/${driver.id}`);
   };
 
-  const handleImportData = async (file) => {
-    // In a real application, this would send the file to the API
-    console.log('Importing file:', file);
-    
-    // Simulate API response
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        resolve({
-          message: 'File processed successfully',
-          result: {
-            totalRows: 18,
-            imported: 10,
-            updated: 8,
-            errors: 0
-          }
-        });
-      }, 2000);
-    });
+  const handleImportData = async (file: File) => {
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const response = await fetch('/api/import/driver-records', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to import data');
+      }
+
+      const result = await response.json();
+      
+      // Refresh the drivers data after successful import
+      await loadDrivers();
+      await loadDriverStats();
+      
+      return {
+        message: result.message || 'File processed successfully',
+        result: result.result || {
+          totalRows: result.totalRows || 0,
+          imported: result.imported || 0,
+          updated: result.updated || 0,
+          errors: result.errors || 0
+        }
+      };
+    } catch (error) {
+      console.error('Error importing file:', error);
+      throw error;
+    }
+  };
+
+  const handleFilterChange = (key: string, value: string) => {
+    setFilters(prev => ({ ...prev, [key]: value }));
   };
 
   return (
@@ -363,7 +257,27 @@ export default function DriversPage() {
         <div className="space-y-6">
           {/* Page header */}
           <div className="sm:flex sm:items-center sm:justify-between">
-            <h1 className="text-2xl font-semibold text-gray-900">Drivers Dashboard</h1>
+            <div className="flex items-center space-x-4">
+              <h1 className="text-2xl font-semibold text-gray-900">Drivers Dashboard</h1>
+              <div className="flex items-center space-x-2">
+                <span className="text-sm text-gray-500">
+                  {useMockData ? 'Mock Data' : 'Database'}
+                </span>
+                <button
+                  type="button"
+                  className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 ${
+                    useMockData ? 'bg-gray-200' : 'bg-primary-600'
+                  }`}
+                  onClick={toggleDataSource}
+                >
+                  <span
+                    className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                      useMockData ? 'translate-x-0' : 'translate-x-5'
+                    }`}
+                  />
+                </button>
+              </div>
+            </div>
             <div className="mt-3 sm:mt-0 sm:ml-4">
               <div className="flex space-x-3">
                 <button
@@ -470,14 +384,12 @@ export default function DriversPage() {
               type="line"
               data={safetyScoreTrendData}
               description="Average safety score across all drivers"
-              downloadFileName="safety_score_trend"
             />
             <Chart
               title="Driving Events (Last 6 Months)"
               type="bar"
               data={drivingEventsData}
               description="Breakdown of driving events by category"
-              downloadFileName="driving_events"
             />
           </div>
 
