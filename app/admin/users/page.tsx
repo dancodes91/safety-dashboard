@@ -212,9 +212,9 @@ const sampleUsers = [
 export default function UserManagementPage() {
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState({ name: 'Admin User', email: 'admin@example.com' });
-  const [users, setUsers] = useState([]);
+  const [users, setUsers] = useState<any[]>([]);
   const [showAddModal, setShowAddModal] = useState(false);
-  const [editingUser, setEditingUser] = useState(null);
+  const [editingUser, setEditingUser] = useState<any>(null);
 
   useEffect(() => {
     // Simulate loading data
@@ -225,7 +225,7 @@ export default function UserManagementPage() {
   }, []);
 
   // Table columns definition
-  const userColumns = [
+  const userColumns: any[] = [
     { header: 'ID', accessorKey: 'id', sortable: true },
     { header: 'Name', accessorKey: 'name', sortable: true },
     { header: 'Email', accessorKey: 'email', sortable: true },
@@ -233,7 +233,7 @@ export default function UserManagementPage() {
       header: 'Role', 
       accessorKey: 'role', 
       sortable: true,
-      cell: ({ row }) => {
+      cell: ({ row }: { row: any }) => {
         let badgeClass = 'bg-gray-100 text-gray-800';
         if (row.role === 'Admin') badgeClass = 'bg-purple-100 text-purple-800';
         else if (row.role === 'Manager') badgeClass = 'bg-blue-100 text-blue-800';
@@ -251,7 +251,7 @@ export default function UserManagementPage() {
       header: 'Status', 
       accessorKey: 'status', 
       sortable: true,
-      cell: ({ row }) => {
+      cell: ({ row }: { row: any }) => {
         const statusClass = row.status === 'Active' 
           ? 'bg-green-100 text-green-800' 
           : 'bg-red-100 text-red-800';
@@ -266,8 +266,9 @@ export default function UserManagementPage() {
     { header: 'Last Login', accessorKey: 'lastLogin', sortable: true },
     { header: 'Created', accessorKey: 'createdAt', sortable: true },
     { 
-      header: 'Actions', 
-      cell: ({ row }) => (
+      header: 'Actions',
+      accessorKey: 'actions',
+      cell: ({ row }: { row: any }) => (
         <div className="flex space-x-2">
           <button
             onClick={() => handleEditUser(row)}
@@ -286,12 +287,12 @@ export default function UserManagementPage() {
     },
   ];
 
-  const handleEditUser = (user) => {
+  const handleEditUser = (user: any) => {
     setEditingUser(user);
     setShowAddModal(true);
   };
 
-  const handleDeleteUser = (id) => {
+  const handleDeleteUser = (id: string) => {
     // In a real app, this would call an API
     setUsers(users.filter(user => user.id !== id));
   };
@@ -307,7 +308,7 @@ export default function UserManagementPage() {
   };
 
   // This would be expanded in a real app
-  const handleSaveUser = (userData) => {
+  const handleSaveUser = (userData: any) => {
     // In a real app, this would call an API
     if (editingUser) {
       setUsers(users.map(user => user.id === editingUser.id ? { ...user, ...userData } : user));
@@ -626,11 +627,11 @@ export default function UserManagementPage() {
                   className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-primary-600 text-base font-medium text-white hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 sm:ml-3 sm:w-auto sm:text-sm"
                   onClick={() => handleSaveUser({
                     // In a real app, this would gather form values properly
-                    name: document.getElementById('name').value,
-                    email: document.getElementById('email').value,
-                    role: document.getElementById('role').value,
-                    department: document.getElementById('department').value,
-                    status: editingUser ? document.getElementById('status').value : 'Active',
+                    name: (document.getElementById('name') as HTMLInputElement)?.value || '',
+                    email: (document.getElementById('email') as HTMLInputElement)?.value || '',
+                    role: (document.getElementById('role') as HTMLSelectElement)?.value || 'Viewer',
+                    department: (document.getElementById('department') as HTMLSelectElement)?.value || 'Operations',
+                    status: editingUser ? (document.getElementById('status') as HTMLSelectElement)?.value || 'Active' : 'Active',
                   })}
                 >
                   Save

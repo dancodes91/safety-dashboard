@@ -91,37 +91,37 @@ export default function AdminSettingsPage() {
     }, 1000);
   }, []);
 
-  const handleSaveGeneral = (e) => {
+  const handleSaveGeneral = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     // In a real app, this would call an API
     alert('General settings saved successfully!');
   };
 
-  const handleSaveEmail = (e) => {
+  const handleSaveEmail = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     // In a real app, this would call an API
     alert('Email settings saved successfully!');
   };
 
-  const handleSaveSecurity = (e) => {
+  const handleSaveSecurity = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     // In a real app, this would call an API
     alert('Security settings saved successfully!');
   };
 
-  const handleSaveData = (e) => {
+  const handleSaveData = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     // In a real app, this would call an API
     alert('Data retention settings saved successfully!');
   };
 
-  const handleSaveNotifications = (e) => {
+  const handleSaveNotifications = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     // In a real app, this would call an API
     alert('System notification settings saved successfully!');
   };
 
-  const handleTestEmail = (e) => {
+  const handleTestEmail = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.preventDefault();
     // In a real app, this would call an API to send a test email
     alert('Test email sent successfully!');
