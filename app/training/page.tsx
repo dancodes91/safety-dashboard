@@ -6,7 +6,7 @@ import DataTable from '@/components/DataTable';
 import KpiStatusCard, { StatusType } from '@/components/KpiStatusCard';
 import Chart from '@/components/Chart';
 import FileUpload from '@/components/FileUpload';
-import { FiFilter, FiCalendar, FiDownload, FiUpload, FiCheck, FiX, FiClock, FiAlertCircle } from 'react-icons/fi';
+import { FiFilter, FiDownload, FiUpload, FiCheck, FiX, FiClock, FiAlertCircle } from 'react-icons/fi';
 
 // Simulated KPI data
 const kpiData = [
@@ -277,7 +277,7 @@ const trainingRecords = [
 ];
 
 // Table columns definition
-const trainingColumns = [
+const trainingColumns: any[] = [
   { header: 'ID', accessorKey: 'id', sortable: true },
   { header: 'Employee', accessorKey: 'employeeName', sortable: true },
   { header: 'Department', accessorKey: 'department', sortable: true },
@@ -287,7 +287,7 @@ const trainingColumns = [
     header: 'Status', 
     accessorKey: 'status', 
     sortable: true,
-    cell: ({ row }) => {
+    cell: ({ row }: { row: any }) => {
       const status = row.status;
       let colorClass = 'bg-gray-100 text-gray-800';
       let icon = null;
@@ -321,7 +321,7 @@ const trainingColumns = [
     header: 'Completion Date', 
     accessorKey: 'completionDate', 
     sortable: true,
-    cell: ({ row }) => {
+    cell: ({ row }: { row: any }) => {
       return row.completionDate || '—';
     }
   },
@@ -329,7 +329,7 @@ const trainingColumns = [
     header: 'Expiration Date', 
     accessorKey: 'expirationDate', 
     sortable: true,
-    cell: ({ row }) => {
+    cell: ({ row }: { row: any }) => {
       const date = row.expirationDate;
       if (!date) return '—';
       
@@ -357,7 +357,7 @@ const trainingColumns = [
     header: 'Score', 
     accessorKey: 'score', 
     sortable: true,
-    cell: ({ row }) => {
+    cell: ({ row }: { row: any }) => {
       const score = row.score;
       if (!score) return '—';
       
@@ -387,13 +387,13 @@ export default function TrainingPage() {
     }, 1000);
   }, []);
 
-  const handleRowClick = (record) => {
+  const handleRowClick = (record: any) => {
     // This would navigate to a training record detail page in a real application
     console.log('Training record selected:', record);
     // router.push(`/training/${record.id}`);
   };
 
-  const handleImportData = async (file) => {
+  const handleImportData = async (file: any) => {
     // In a real application, this would send the file to the API
     console.log('Importing file:', file);
     
@@ -536,14 +536,12 @@ export default function TrainingPage() {
               type="line"
               data={trainingCompletionTrendData}
               description="Overall training completion percentage over time"
-              downloadFileName="training_completion_trend"
             />
             <Chart
               title="Training Completion by Department"
               type="bar"
               data={departmentTrainingData}
               description="Current training completion rate by department"
-              downloadFileName="department_training"
             />
           </div>
 
@@ -553,7 +551,6 @@ export default function TrainingPage() {
               type="pie"
               data={trainingTypeData}
               description="Distribution of training hours by training type"
-              downloadFileName="training_type_distribution"
             />
           </div>
 
