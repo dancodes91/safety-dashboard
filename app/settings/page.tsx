@@ -58,46 +58,46 @@ export default function SettingsPage() {
     }, 1000);
   }, []);
 
-  const handleNotificationChange = (setting) => {
+  const handleNotificationChange = (setting: keyof typeof notificationSettings) => {
     setNotificationSettings({
       ...notificationSettings,
       [setting]: !notificationSettings[setting],
     });
   };
 
-  const handleDisplaySettingChange = (setting, value) => {
+  const handleDisplaySettingChange = (setting: keyof typeof displaySettings, value: any) => {
     setDisplaySettings({
       ...displaySettings,
       [setting]: value,
     });
   };
 
-  const handleEmailReportChange = (setting) => {
+  const handleEmailReportChange = (setting: keyof typeof emailReportSettings) => {
     setEmailReportSettings({
       ...emailReportSettings,
       [setting]: !emailReportSettings[setting],
     });
   };
 
-  const handleSaveProfile = (e) => {
+  const handleSaveProfile = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     // In a real app, this would call an API to save the profile
     alert('Profile settings saved successfully!');
   };
 
-  const handleSaveNotifications = (e) => {
+  const handleSaveNotifications = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     // In a real app, this would call an API to save notification settings
     alert('Notification settings saved successfully!');
   };
 
-  const handleSaveDisplay = (e) => {
+  const handleSaveDisplay = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     // In a real app, this would call an API to save display settings
     alert('Display settings saved successfully!');
   };
 
-  const handleSaveEmailReports = (e) => {
+  const handleSaveEmailReports = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     // In a real app, this would call an API to save email report settings
     alert('Email report settings saved successfully!');
