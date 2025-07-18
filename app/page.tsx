@@ -6,8 +6,33 @@ import Chart from '@/components/Chart';
 import KpiStatusCard, { StatusType } from '@/components/KpiStatusCard';
 import { FiAlertCircle, FiDownload } from 'react-icons/fi';
 
+interface KpiData {
+  title: string;
+  currentValue: number | string;
+  targetValue: number | string;
+  status: StatusType;
+  unit: string;
+  change: number;
+  description: string;
+  tooltipText: string;
+}
+
+interface IncidentData {
+  id: string;
+  date: string;
+  employee: string;
+  type: string;
+  severity: string;
+  status: string;
+}
+
+interface TrainingData {
+  name: string;
+  percentage: number;
+}
+
 // Mock KPI data
-const kpiData = [
+const kpiData: KpiData[] = [
   {
     title: 'Incidents',
     currentValue: 7,
@@ -104,6 +129,7 @@ const eventTypesData = {
   labels: ['Speeding', 'Harsh Braking', 'Harsh Acceleration', 'Harsh Turning', 'Distracted Driving'],
   datasets: [
     {
+      label: 'Event Types',
       data: [45, 25, 15, 10, 5],
       backgroundColor: [
         'rgba(239, 68, 68, 0.7)',
@@ -224,14 +250,12 @@ export default function Dashboard() {
               type="line"
               data={incidentTrendData}
               description="Total incidents reported by month"
-              downloadFileName="incident_trend"
             />
             <Chart
               title="Driver Safety Scores"
               type="bar"
               data={driverSafetyScoresData}
               description="Distribution of drivers by safety score range"
-              downloadFileName="driver_safety_scores"
             />
           </div>
           
@@ -307,7 +331,6 @@ export default function Dashboard() {
               type="pie"
               data={eventTypesData}
               description="Breakdown of safety events by category"
-              downloadFileName="event_types"
             />
             <div className="card h-80">
               <h3 className="text-lg font-medium mb-4">Training Compliance</h3>
