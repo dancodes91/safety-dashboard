@@ -17,7 +17,15 @@ export const authOptions: NextAuthOptions = {
         password: { label: 'Password', type: 'password' }
       },
       async authorize(credentials) {
+        console.log('NextAuth authorize called with:', { 
+          email: credentials?.email, 
+          hasPassword: !!credentials?.password,
+          environment: process.env.NODE_ENV,
+          nextAuthUrl: process.env.NEXTAUTH_URL
+        });
+
         if (!credentials?.email || !credentials?.password) {
+          console.log('Missing credentials');
           return null;
         }
         
@@ -26,6 +34,7 @@ export const authOptions: NextAuthOptions = {
           credentials.email === DEMO_USER_EMAIL && 
           credentials.password === DEMO_USER_PASSWORD
         ) {
+          console.log('Demo user authentication successful');
           // Return a demo admin user without accessing the database
           const demoUser: NextAuthUser = {
             id: 'demo-user-id',
@@ -38,22 +47,28 @@ export const authOptions: NextAuthOptions = {
         
         // Regular database authentication
         try {
+          console.log('Attempting database connection...');
           await dbConnect();
+          console.log('Database connected, searching for user...');
           
           // We need to cast this to any because our User type doesn't have password
           // but we know the database model does
           const user = await UserModel.findOne({ email: credentials.email }) as any;
           
           if (!user || !user.password) {
+            console.log('User not found or no password');
             return null;
           }
           
+          console.log('User found, validating password...');
           const isPasswordValid = await compare(credentials.password, user.password);
           
           if (!isPasswordValid) {
+            console.log('Invalid password');
             return null;
           }
           
+          console.log('Authentication successful for user:', user.email);
           // Convert to NextAuth User format
           const authUser: NextAuthUser = {
             id: user._id.toString(),
@@ -84,6 +99,22 @@ export const authOptions: NextAuthOptions = {
         session.user.role = token.role;
       }
       return session;
+    },
+    async signIn({ user, account, profile, email, credentials }) {
+      console.log('SignIn callback called:', { 
+        user: user?.email, 
+        account: account?.provider,
+        hasCredentials: !!credentials 
+      });
+      return true;
+    },
+    async redirect({ url, baseUrl }) {
+      console.log('Redirect callback called:', { url, baseUrl });
+      // Allows relative callback URLs
+      if (url.startsWith("/")) return `${baseUrl}${url}`;
+      // Allows callback URLs on the same origin
+      else if (new URL(url).origin === baseUrl) return url;
+      return baseUrl;
     }
   },
   pages: {
@@ -95,6 +126,7 @@ export const authOptions: NextAuthOptions = {
     maxAge: 30 * 24 * 60 * 60, // 30 days
   },
   secret: process.env.NEXTAUTH_SECRET,
+  debug: process.env.NODE_ENV === 'development',
 };
 
 const handler = NextAuth(authOptions);
