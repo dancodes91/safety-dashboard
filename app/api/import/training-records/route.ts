@@ -5,6 +5,30 @@ import dbConnect from '@/lib/mongoose';
 import TrainingRecordModel from '@/models/TrainingRecord';
 import * as XLSX from 'xlsx';
 
+interface TrainingRecordData {
+  employeeId: string;
+  employeeName: string;
+  division?: string;
+  plant?: string;
+  trainingType: string;
+  trainingName: string;
+  status?: string;
+  completionDate?: Date | string;
+  expirationDate?: Date | string;
+  score?: number;
+  instructor?: string;
+  requiredByDate?: Date | string;
+  [key: string]: any;
+}
+
+interface ImportResult {
+  totalRows: number;
+  imported: number;
+  updated: number;
+  errors: number;
+  errorDetails: string[];
+}
+
 export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
@@ -81,7 +105,7 @@ export async function POST(request: NextRequest) {
 
     for (const row of data) {
       try {
-        const trainingData = { ...row } as any;
+        const trainingData = { ...(row as TrainingRecordData) };
         
         // Format date fields
         const dateFields = ['requiredByDate', 'completionDate', 'expirationDate'];
