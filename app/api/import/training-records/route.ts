@@ -52,10 +52,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check file type
-    if (!file.name.endsWith('.xlsx') && !file.name.endsWith('.xls')) {
+    // Check file type - support both CSV and Excel
+    const isCSV = file.name.endsWith('.csv');
+    const isExcel = file.name.endsWith('.xlsx') || file.name.endsWith('.xls');
+    
+    if (!isCSV && !isExcel) {
       return NextResponse.json(
-        { error: 'Invalid file format. Please upload an Excel file (.xlsx or .xls)' },
+        { error: 'Invalid file format. Please upload a CSV file (.csv) or Excel file (.xlsx or .xls)' },
         { status: 400 }
       );
     }
@@ -63,11 +66,22 @@ export async function POST(request: NextRequest) {
     // Convert file to buffer
     const buffer = await file.arrayBuffer();
     
-    // Parse Excel file
-    const workbook = XLSX.read(buffer, { type: 'buffer' });
-    const sheetName = workbook.SheetNames[0];
-    const worksheet = workbook.Sheets[sheetName];
-    const data = XLSX.utils.sheet_to_json(worksheet);
+    let data: any[];
+    
+    if (isCSV) {
+      // Parse CSV file
+      const text = new TextDecoder().decode(buffer);
+      const workbook = XLSX.read(text, { type: 'string' });
+      const sheetName = workbook.SheetNames[0];
+      const worksheet = workbook.Sheets[sheetName];
+      data = XLSX.utils.sheet_to_json(worksheet);
+    } else {
+      // Parse Excel file
+      const workbook = XLSX.read(buffer, { type: 'buffer' });
+      const sheetName = workbook.SheetNames[0];
+      const worksheet = workbook.Sheets[sheetName];
+      data = XLSX.utils.sheet_to_json(worksheet);
+    }
 
     // Validate data structure
     if (data.length === 0) {
@@ -105,19 +119,66 @@ export async function POST(request: NextRequest) {
 
     for (const row of data) {
       try {
-        const trainingData = { ...(row as TrainingRecordData) };
+        const rawData = row as any;
         
-        // Format date fields
-        const dateFields = ['requiredByDate', 'completionDate', 'expirationDate'];
-        
-        for (const field of dateFields) {
-          if (trainingData[field]) {
-            if (typeof trainingData[field] === 'string') {
-              trainingData[field] = new Date(trainingData[field]);
-            } else if (typeof trainingData[field] === 'number') {
-              trainingData[field] = XLSX.SSF.parse_date_code(trainingData[field]);
+        // Helper functions for robust data handling
+        const safeString = (value: any, defaultValue: string = ''): string => {
+          if (value === null || value === undefined) return defaultValue;
+          return String(value).trim();
+        };
+
+        const safeNumber = (value: any, defaultValue: number = 0): number => {
+          if (value === null || value === undefined || value === '') return defaultValue;
+          const num = Number(value);
+          return isNaN(num) ? defaultValue : num;
+        };
+
+        const safeDate = (value: any): Date | undefined => {
+          if (!value) return undefined;
+          try {
+            if (typeof value === 'string') {
+              const parsed = new Date(value);
+              return isNaN(parsed.getTime()) ? undefined : parsed;
+            } else if (typeof value === 'number') {
+              // Excel serial date conversion
+              const excelEpoch = new Date(1900, 0, 1);
+              const days = value - 1; // Subtract 1 for Excel's leap year bug
+              return new Date(excelEpoch.getTime() + days * 24 * 60 * 60 * 1000);
             }
+            return new Date(value);
+          } catch {
+            return undefined;
           }
+        };
+
+        const trainingData: TrainingRecordData = {
+          employeeId: safeString(rawData.employeeId || rawData['Employee ID'] || rawData['employeeId']),
+          employeeName: safeString(rawData.employeeName || rawData['Employee Name'] || rawData['employeeName']),
+          division: safeString(rawData.division || rawData['Division'] || rawData['division']),
+          plant: safeString(rawData.plant || rawData['Plant'] || rawData['plant']),
+          trainingType: safeString(rawData.trainingType || rawData['Training Type'] || rawData['trainingType']),
+          trainingName: safeString(rawData.trainingName || rawData['Training Name'] || rawData['trainingName']),
+          instructor: safeString(rawData.instructor || rawData['Instructor'] || rawData['instructor']),
+          score: safeNumber(rawData.score || rawData['Score'] || rawData['score']),
+        };
+
+        // Handle date fields with robust parsing
+        trainingData.requiredByDate = safeDate(rawData.requiredByDate || rawData['Required By Date'] || rawData['requiredByDate']);
+        trainingData.completionDate = safeDate(rawData.completionDate || rawData['Completion Date'] || rawData['completionDate']);
+        trainingData.expirationDate = safeDate(rawData.expirationDate || rawData['Expiration Date'] || rawData['expirationDate']);
+
+        // Validate required fields
+        if (!trainingData.employeeId) {
+          throw new Error('Missing required field: Employee ID');
+        }
+        if (!trainingData.employeeName) {
+          throw new Error('Missing required field: Employee Name');
+        }
+        if (!trainingData.trainingType) {
+          throw new Error('Missing required field: Training Type');
+        }
+        if (!trainingData.trainingName) {
+          throw new Error('Missing required field: Training Name');
         }
         
         // Validate status field

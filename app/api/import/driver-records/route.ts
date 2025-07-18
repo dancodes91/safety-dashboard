@@ -126,79 +126,136 @@ export async function POST(request: NextRequest) {
       try {
         const rawData = row as any;
         
-        // Map Samsara Excel columns to our database schema
+        // Helper function to safely convert to number
+        const safeNumber = (value: any, defaultValue: number = 0): number => {
+          if (value === null || value === undefined || value === '') return defaultValue;
+          const num = Number(value);
+          return isNaN(num) ? defaultValue : num;
+        };
+
+        // Helper function to safely convert to string
+        const safeString = (value: any, defaultValue: string = ''): string => {
+          if (value === null || value === undefined) return defaultValue;
+          return String(value);
+        };
+
+        // Helper function to parse time strings (hh:mm:ss format)
+        const safeTimeString = (value: any): string => {
+          if (!value) return '00:00:00';
+          const timeStr = String(value);
+          // Check if it's already in hh:mm:ss format
+          if (/^\d{1,3}:\d{2}:\d{2}$/.test(timeStr)) return timeStr;
+          // If it's a decimal (like 0.11), convert to time format
+          if (!isNaN(Number(timeStr))) {
+            const hours = Math.floor(Number(timeStr));
+            const minutes = Math.floor((Number(timeStr) - hours) * 60);
+            const seconds = Math.floor(((Number(timeStr) - hours) * 60 - minutes) * 60);
+            return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+          }
+          return '00:00:00';
+        };
+
+        // Helper function to parse date strings
+        const safeDate = (value: any): Date => {
+          if (!value) return new Date();
+          try {
+            // Handle different date formats
+            if (typeof value === 'string') {
+              // Handle formats like "Jan 6 10:38AM PST"
+              const parsed = new Date(value);
+              return isNaN(parsed.getTime()) ? new Date() : parsed;
+            }
+            return new Date(value);
+          } catch {
+            return new Date();
+          }
+        };
+
+        // Map Samsara Excel columns to our database schema with robust data handling
         const driverData: any = {
-          rank: rawData['Rank'] || 0,
-          driverName: rawData['Driver Name'] || '',
-          driverTags: rawData['Driver Tags'] || '',
-          tagPaths: rawData['Tag Paths'] || '',
-          driverId: rawData['Driver ID'] || '',
-          username: rawData['Username'] || '',
-          safetyScore: rawData['Safety Score'] || 0,
-          driveTime: rawData['Drive Time (hh:mm:ss)'] || '00:00:00',
-          totalDistance: rawData['Total Distance (mi)'] || 0,
-          totalEvents: rawData['Total Events'] || 0,
-          totalBehaviors: rawData['Total Behaviors'] || 0,
+          rank: safeNumber(rawData['Rank']),
+          driverName: safeString(rawData['Driver Name'], 'Unknown Driver'),
+          driverTags: safeString(rawData['Driver Tags']),
+          tagPaths: safeString(rawData['Tag Paths']),
+          driverId: safeString(rawData['Driver ID']),
+          username: safeString(rawData['Username']),
+          safetyScore: safeNumber(rawData['Safety Score']),
+          driveTime: safeTimeString(rawData['Drive Time (hh:mm:ss)']),
+          totalDistance: safeNumber(rawData['Total Distance (mi)']),
+          totalEvents: safeNumber(rawData['Total Events']),
+          totalBehaviors: safeNumber(rawData['Total Behaviors']),
           weekStartDate: new Date(), // Default to current date, should be provided
           weekEndDate: new Date(),   // Default to current date, should be provided
         };
 
-        // Extract speeding data
+        // Extract speeding data with robust handling
         const speedingData: any = {
-          lightTime: rawData['Time Over Speed Limit (hh:mm:ss) - Light'] || '00:00:00',
-          moderateTime: rawData['Time Over Speed Limit (hh:mm:ss) - Moderate'] || '00:00:00',
-          heavyTime: rawData['Time Over Speed Limit (hh:mm:ss) - Heavy'] || '00:00:00',
-          severeTime: rawData['Time Over Speed Limit (hh:mm:ss) - Severe'] || '00:00:00',
-          maxSpeedTime: rawData['Time Over Max Speed (hh:mm:ss)'] || '00:00:00',
-          manualCount: rawData['Speeding (Manual)'] || 0,
-          percentLight: rawData['Percent Light Speeding'] || 0,
-          percentModerate: rawData['Percent Moderate Speeding'] || 0,
-          percentHeavy: rawData['Percent Heavy Speeding'] || 0,
-          percentSevere: rawData['Percent Severe Speeding'] || 0,
-          percentMax: rawData['Percent Max Speed'] || 0,
-          lightCount: rawData['Light Speeding Events Count'] || 0,
-          moderateCount: rawData['Moderate Speeding Events Count'] || 0,
-          heavyCount: rawData['Heavy Speeding Events Count'] || 0,
-          severeCount: rawData['Severe Speeding Events Count'] || 0,
-          maxCount: rawData['Max Speed Events Count'] || 0,
-          maxSpeed: rawData['Max Speed (mph)'] || 0,
-          maxSpeedAt: rawData['Max Speed At'] ? new Date(rawData['Max Speed At']) : new Date(),
+          lightTime: safeTimeString(rawData['Time Over Speed Limit (hh:mm:ss) - Light']),
+          moderateTime: safeTimeString(rawData['Time Over Speed Limit (hh:mm:ss) - Moderate']),
+          heavyTime: safeTimeString(rawData['Time Over Speed Limit (hh:mm:ss) - Heavy']),
+          severeTime: safeTimeString(rawData['Time Over Speed Limit (hh:mm:ss) - Severe']),
+          maxSpeedTime: safeTimeString(rawData['Time Over Max Speed (hh:mm:ss)']),
+          manualCount: safeNumber(rawData['Speeding (Manual)']),
+          percentLight: safeNumber(rawData['Percent Light Speeding']),
+          percentModerate: safeNumber(rawData['Percent Moderate Speeding']),
+          percentHeavy: safeNumber(rawData['Percent Heavy Speeding']),
+          percentSevere: safeNumber(rawData['Percent Severe Speeding']),
+          percentMax: safeNumber(rawData['Percent Max Speed']),
+          lightCount: safeNumber(rawData['Light Speeding Events Count']),
+          moderateCount: safeNumber(rawData['Moderate Speeding Events Count']),
+          heavyCount: safeNumber(rawData['Heavy Speeding Events Count']),
+          severeCount: safeNumber(rawData['Severe Speeding Events Count']),
+          maxCount: safeNumber(rawData['Max Speed Events Count']),
+          maxSpeed: safeNumber(rawData['Max Speed (mph)']),
+          maxSpeedAt: safeDate(rawData['Max Speed At']),
         };
 
-        // Extract events data
+        // Extract events data with robust handling
         const events: any = {
-          crash: rawData['Crash'] || 0,
-          followingDistance: rawData['Following Distance'] || 0,
-          following0to2s: rawData['Following of 0-2s (Manual)'] || 0,
-          following2to4s: rawData['Following of 2-4s (Manual)'] || 0,
-          lateResponse: rawData['Late Response (Manual)'] || 0,
-          defensiveDriving: rawData['Defensive Driving (Manual)'] || 0,
-          nearCollision: rawData['Near Collision (Manual)'] || 0,
-          harshAccel: rawData['Harsh Accel'] || 0,
-          harshBrake: rawData['Harsh Brake'] || 0,
-          harshTurn: rawData['Harsh Turn'] || 0,
-          mobileUsage: rawData['Mobile Usage'] || 0,
-          inattentiveDriving: rawData['Inattentive Driving'] || 0,
-          drowsy: rawData['Drowsy'] || 0,
-          rollingStop: rawData['Rolling Stop'] || 0,
-          didNotYield: rawData['Did Not Yield (Manual)'] || 0,
-          ranRedLight: rawData['Ran Red Light (Manual)'] || 0,
-          laneDeparture: rawData['Lane Departure (Manual)'] || 0,
-          obstructedCameraAuto: rawData['Obstructed Camera (Automatic)'] || 0,
-          obstructedCameraManual: rawData['Obstructed Camera (Manual)'] || 0,
-          eatingDrinking: rawData['Eating/Drinking (Manual)'] || 0,
-          smoking: rawData['Smoking (Manual)'] || 0,
-          noSeatBelt: rawData['No Seat Belt'] || 0,
-          forwardCollisionWarning: rawData['Forward Collision Warning'] || 0,
+          crash: safeNumber(rawData['Crash']),
+          followingDistance: safeNumber(rawData['Following Distance']),
+          following0to2s: safeNumber(rawData['Following of 0-2s (Manual)']),
+          following2to4s: safeNumber(rawData['Following of 2-4s (Manual)']),
+          lateResponse: safeNumber(rawData['Late Response (Manual)']),
+          defensiveDriving: safeNumber(rawData['Defensive Driving (Manual)']),
+          nearCollision: safeNumber(rawData['Near Collision (Manual)']),
+          harshAccel: safeNumber(rawData['Harsh Accel']),
+          harshBrake: safeNumber(rawData['Harsh Brake']),
+          harshTurn: safeNumber(rawData['Harsh Turn']),
+          mobileUsage: safeNumber(rawData['Mobile Usage']),
+          inattentiveDriving: safeNumber(rawData['Inattentive Driving']),
+          drowsy: safeNumber(rawData['Drowsy']),
+          rollingStop: safeNumber(rawData['Rolling Stop']),
+          didNotYield: safeNumber(rawData['Did Not Yield (Manual)']),
+          ranRedLight: safeNumber(rawData['Ran Red Light (Manual)']),
+          laneDeparture: safeNumber(rawData['Lane Departure (Manual)']),
+          obstructedCameraAuto: safeNumber(rawData['Obstructed Camera (Automatic)']),
+          obstructedCameraManual: safeNumber(rawData['Obstructed Camera (Manual)']),
+          eatingDrinking: safeNumber(rawData['Eating/Drinking (Manual)']),
+          smoking: safeNumber(rawData['Smoking (Manual)']),
+          noSeatBelt: safeNumber(rawData['No Seat Belt']),
+          forwardCollisionWarning: safeNumber(rawData['Forward Collision Warning']),
         };
 
         // Add nested data
         driverData.speedingData = speedingData;
         driverData.events = events;
         
-        // Check for existing driver record
+        // Validate required fields
+        if (!driverData.driverName || driverData.driverName === 'Unknown Driver') {
+          throw new Error('Missing required field: Driver Name');
+        }
+        
+        if (!driverData.driverId) {
+          throw new Error('Missing required field: Driver ID');
+        }
+        
+        // Check for existing driver record (use combination of driverId and driverName for uniqueness)
         const existingRecord = await SamsaraDriverRecordModel.findOne({ 
-          driverId: driverData.driverId 
+          $or: [
+            { driverId: driverData.driverId },
+            { driverName: driverData.driverName, driverId: driverData.driverId }
+          ]
         });
         
         if (existingRecord) {

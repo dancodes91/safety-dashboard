@@ -101,44 +101,54 @@ export async function POST(request: NextRequest) {
         
         // Map KPA CSV columns to our database schema
         const eventData: any = {
-          reportNumber: rawData['Report #'] || '',
-          link: rawData['Link'] || '',
-          observer: rawData['Observer'] || '',
-          employeeId: rawData['Employee:'] || '', // Using employee name as ID for now
-          employeeName: rawData['Employee:'] || '',
-          division: rawData['Division:'] || '',
-          homePlant: rawData['Home Plant:'] || '',
-          hireDuration: rawData['Employee: - Hire Duration'] || '',
-          supervisor: rawData['Employee: - Supervisor'] || '',
-          eventType: rawData['Is this an Accident, Incident, Near Miss?'] || '',
-          unitNumber: rawData['Unit #:'] || '',
-          equipmentType: rawData['Holliday Equipment Type:'] || '',
-          jobNumber: rawData['Job#'] || '',
-          location: rawData['Place of Accident/Incident:'] || '',
-          plant: rawData['Plant:'] || '',
+          reportNumber: String(rawData['Report #'] || ''),
+          link: String(rawData['Link'] || ''),
+          observer: rawData['Observer'] || 'Unknown',
+          employeeId: rawData['Employee:'] || 'Unknown', // Using employee name as ID for now
+          employeeName: rawData['Employee:'] || 'Unknown',
+          division: rawData['Division:'] || 'Unknown',
+          homePlant: rawData['Home Plant:'] || 'Unknown',
+          hireDuration: rawData['Employee: - Hire Duration'] || 'Unknown',
+          supervisor: rawData['Employee: - Supervisor'] || 'Unknown',
+          eventType: rawData['Is this an Accident, Incident, Near Miss?'] || 'Unknown',
+          unitNumber: String(rawData['Unit #:'] || ''),
+          equipmentType: rawData['Holliday Equipment Type:'] || 'Unknown',
+          jobNumber: String(rawData['Job#'] || ''),
+          location: rawData['Place of Accident/Incident:'] || 'Unknown',
+          plant: rawData['Plant:'] || rawData['Home Plant:'] || 'Unknown', // Use Home Plant as fallback
           videoLink: rawData['Attach Video'] || '',
-          description: rawData['Description of Event:'] || '',
+          description: rawData['Description of Event:'] || 'No description provided',
           injuries: rawData['Any Injuries Involved?'] === 'Yes',
-          preventability: rawData['Please Select One:'] || '',
-          eventCategory: rawData['Choose type of event'] || '',
+          preventability: rawData['Please Select One:'] || 'Unknown',
+          eventCategory: rawData['Choose type of event'] || 'Unknown',
           severityRating: 1, // Default severity rating, can be updated later
         };
         
-        // Format date fields
+        // Format date fields - Excel serial date conversion
         if (rawData['Employee: - Hire Date']) {
           if (typeof rawData['Employee: - Hire Date'] === 'string') {
             eventData.hireDate = new Date(rawData['Employee: - Hire Date']);
           } else if (typeof rawData['Employee: - Hire Date'] === 'number') {
-            // Excel stores dates as serial numbers, convert to JS date
-            eventData.hireDate = new Date((rawData['Employee: - Hire Date'] - 25569) * 86400 * 1000);
+            // Excel stores dates as serial numbers starting from 1900-01-01
+            // Excel serial date 1 = 1900-01-01, but JavaScript Date starts from 1970-01-01
+            // Excel has a bug where it treats 1900 as a leap year, so we need to subtract 1
+            const excelEpoch = new Date(1900, 0, 1);
+            const days = rawData['Employee: - Hire Date'] - 1; // Subtract 1 for Excel's leap year bug
+            eventData.hireDate = new Date(excelEpoch.getTime() + days * 24 * 60 * 60 * 1000);
           }
+        } else {
+          // Default hire date if not provided
+          eventData.hireDate = new Date('2020-01-01');
         }
         
         if (rawData['Date & Time of Accident/Incident:']) {
           if (typeof rawData['Date & Time of Accident/Incident:'] === 'string') {
             eventData.dateTime = new Date(rawData['Date & Time of Accident/Incident:']);
           } else if (typeof rawData['Date & Time of Accident/Incident:'] === 'number') {
-            eventData.dateTime = new Date((rawData['Date & Time of Accident/Incident:'] - 25569) * 86400 * 1000);
+            // Excel stores dates as serial numbers starting from 1900-01-01
+            const excelEpoch = new Date(1900, 0, 1);
+            const days = rawData['Date & Time of Accident/Incident:'] - 1; // Subtract 1 for Excel's leap year bug
+            eventData.dateTime = new Date(excelEpoch.getTime() + days * 24 * 60 * 60 * 1000);
           }
         }
         
